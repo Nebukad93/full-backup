@@ -142,7 +142,7 @@ HOST_ESCP=$(echo "$HOST" | sed -e 's/[]\/$*.^|[]/\\&/g')
 HOST_FTPPATH=$(echo "$FTPPATH" | sed -e 's/[]\/$*.^|[]/\\&/g')
 
 echo ""
-echo -n "Ajout des paramètres de connexion au serveur Rsync"
+echo -n "Ajout des paramètres de connexion au serveur FTP"
 
 sed -i -e "s/\(HOST=\).*/\1'$HOST_ESCP'/" \
        -e "s/\(USER=\).*/\1'$USER'/"      \
