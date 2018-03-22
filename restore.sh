@@ -20,7 +20,7 @@ PORT=
 # --------------------------------------------------------------------
 
 ERROR_FILE=./errors.log
-FTP_FILE=./rsync.log
+FTP_FILE=./ftp.log
 EXIT=0
 ARCHIVE=""
 FTP_REMOTE_PATH='/'
@@ -60,8 +60,6 @@ downloadFromRemoteServer() {
 
 }
 
-#    NB_ATTEMPT=1
-
 backupList() {
 
     local backups=(/home/backup/local/backup-*)
@@ -94,7 +92,7 @@ backupList() {
     ARCHIVE="$ARCHIVEPATH.tar.gz"
 }
 
-#remoteRestoration() {
+remoteRestoration() {
 
     echo -e "\n${CCYAN}Liste des archives disponibles :${CEND}"
     echo -e "${CCYAN}-----------------------------------------------------------------------------------------${CEND}"
@@ -115,8 +113,6 @@ backupList() {
     echo "> Récupération de l'archive depuis le serveur FTP"
     downloadFromRemoteServer "$ARCHIVE"
 
-#    checkIntegrity
-
 }
 
 localRestoration() {
@@ -131,8 +127,6 @@ localRestoration() {
 
     echo "> Récupération de l'archive locale"
     cp /home/backup/local/"$ARCHIVEPATH"/*.tar.gz* .
-
-#    checkIntegrity
 
 }
 
@@ -209,8 +203,6 @@ echo ""
 echo -e "${CGREEN}> Restauration effectuée !${CEND}"
 
 rm -rf "$ARCHIVE"
-rm -rf "$ARCHIVE".pub
-rm -rf "$ARCHIVE".sig
 rm -rf $ERROR_FILE
 rm -rf $FTP_FILE
 

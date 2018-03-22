@@ -6,7 +6,7 @@
 #      Auteurs ........ : Hardware
 
 ERROR_FILE=./errors.log
-FTP_FILE=./rsync.log
+FTP_FILE=./ftp.log
 
 CSI="\033["
 CEND="${CSI}0m"
