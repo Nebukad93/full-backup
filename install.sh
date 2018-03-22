@@ -182,6 +182,7 @@ cat > /opt/full-backup/.excluded-paths <<EOF
 /var/cache
 /var/backup
 /var/lib/docker
+/home/backup/local
 EOF
 
 if [[ "$EXCLUDE" = "o" ]] || [[ "$EXCLUDE" = "O" ]]; then
