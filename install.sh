@@ -63,7 +63,7 @@ echo -e "${CCYAN}[  INSTALLATION DES PRÉ-REQUIS  ]${CEND}"
 echo -e "${CCYAN}---------------------------------${CEND}"
 echo ""
 
-echo -e "${CGREEN}-> Installation de Rsync ${CEND}"
+echo -e "${CGREEN}-> Installation de lftp - pigz ${CEND}"
 echo ""
 
 apt-get install -y lftp pigz
