@@ -12,7 +12,7 @@ apt-get install git-core
 
 ```bash
 cd /opt
-git clone https://github.com/hardware/full-backup.git
+git clone https://github.com/Nebukad93/full-backup.git
 cd full-backup
 chmod +x *.sh && ./install.sh
 ```
