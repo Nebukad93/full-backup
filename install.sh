@@ -139,6 +139,7 @@ fi
 
 # On échappe les caractères spéciaux dans l'URL
 HOST_ESCP=$(echo "$HOST" | sed -e 's/[]\/$*.^|[]/\\&/g')
+HOST_FTPPATH=$(echo "$FTPPATH" | sed -e 's/[]\/$*.^|[]/\\&/g')
 
 echo ""
 echo -n "Ajout des paramètres de connexion au serveur Rsync"
@@ -150,7 +151,7 @@ sed -i -e "s/\(HOST=\).*/\1'$HOST_ESCP'/" \
        -e "s/\(NB_MAX_BACKUP=\).*/\1$NBACKUPS/" backup.sh restore.sh
 
 if [[ "$FTPPATH" != "/" ]]; then
-    sed -i "s/\(FTP_REMOTE_PATH=\).*/\1'$FTPPATH'/" backup.sh restore.sh
+    sed -i "s/\(FTP_REMOTE_PATH=\).*/\1'$HOST_FTPPATH'/" backup.sh restore.sh
 fi
 
 # Ajout de l'adresse email de reporting
