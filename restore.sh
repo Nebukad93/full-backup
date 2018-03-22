@@ -23,7 +23,7 @@ ERROR_FILE=./errors.log
 FTP_FILE=./rsync.log
 EXIT=0
 ARCHIVE=""
-FTP_REMOTE_PATH="/"
+FTP_REMOTE_PATH='/'
 
 # Définition des variables de couleurs
 CSI="\033["
