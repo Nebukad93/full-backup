@@ -27,7 +27,7 @@ ERROR_FILE=$BACKUP_FOLDER/errors.log
 FTP_FILE=$BACKUP_FOLDER/ftp.log
 ARCHIVE=$BACKUP_FOLDER/backup-$CDAY.tar.gz
 LOG_FILE=/var/log/backup.log
-FTP_REMOTE_PATH="/"
+FTP_REMOTE_PATH='/'
 
 # Définition des variables de couleurs
 CSI="\033["
