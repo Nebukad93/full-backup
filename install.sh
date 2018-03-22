@@ -5,6 +5,7 @@
 # @(#) Date ........... : 19/09/2014
 #      Auteurs ........ : Hardware
 #      Modifié par .... : Nebukad93
+#
 
 ERROR_FILE=./errors.log
 FTP_FILE=./ftp.log
