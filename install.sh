@@ -20,12 +20,12 @@ CCYAN="${CSI}1;36m"
 smallLoader() {
     echo ""
     echo ""
-    echo -ne '[ + + +             ] 3s \r'
-    sleep 1
-    echo -ne '[ + + + + + +       ] 2s \r'
-    sleep 1
-    echo -ne '[ + + + + + + + + + ] 1s \r'
-    sleep 1
+#    echo -ne '[ + + +             ] 3s \r'
+#    sleep 1
+#    echo -ne '[ + + + + + +       ] 2s \r'
+#    sleep 1
+#    echo -ne '[ + + + + + + + + + ] 1s \r'
+#    sleep 1
     echo -ne '[ + + + + + + + + + ] Appuyez sur [ENTRÉE] pour continuer... \r'
     echo -ne '\n'
 
@@ -66,7 +66,7 @@ echo ""
 echo -e "${CGREEN}-> Installation de Rsync ${CEND}"
 echo ""
 
-apt-get install -y rsync
+apt-get install -y lftp pigz
 
 if [[ $? -ne 0 ]]; then
     echo ""
@@ -79,19 +79,19 @@ smallLoader
 clear
 
 echo -e "${CCYAN}---------------------------------${CEND}"
-echo -e "${CCYAN}[  PARAMÈTRES DE CONNEXION RSYNC  ]${CEND}"
+echo -e "${CCYAN}[  PARAMÈTRES DE CONNEXION FTP  ]${CEND}"
 echo -e "${CCYAN}---------------------------------${CEND}"
 echo ""
 
 getCredentials() {
 
     read -rp "> Veuillez saisir l'adresse du serveur distant : " HOST
-    read -rp "> Veuillez saisir le numéro du port [Par défaut: 873] : " PORT
+    read -rp "> Veuillez saisir le numéro du port [Par défaut: 21] : " PORT
     read -rp "> Veuillez saisir le nom d'utilisateur : " USER
     read -srp "> Veuillez saisir le mot de passe : " PASSWD
 
     if [[ "$PORT" = "" ]]; then
-        PORT=873
+        PORT=21
     fi
 
     echo -e "\n\nParamètres de connexion :"
@@ -100,29 +100,29 @@ getCredentials() {
     echo -e "- Port : ${CPURPLE}$PORT${CEND}"
 }
 
-#getCredentials
+getCredentials
 
-#echo "set ssl:verify-certificate false" > ~/.lftprc
+echo "set ssl:verify-certificate false" > ~/.lftprc
 
-#echo -e ""
-#echo -n "Test de connexion en cours..."
+echo -e ""
+echo -n "Test de connexion en cours..."
 
-#until lftp -d -e "ls; bye" -u "$USER","$PASSWD" -p "$PORT" "$HOST" 2> "$FTP_FILE" > /dev/null
-#do
-#    grep -i "150\(.*\)connection" $FTP_FILE
+until lftp -d -e "ls; bye" -u "$USER","$PASSWD" -p "$PORT" "$HOST" 2> "$FTP_FILE" > /dev/null
+do
+    grep -i "150\(.*\)connection" $FTP_FILE
 
-#    if [[ $? -eq 0 ]]; then
-#        break
-#    fi
+    if [[ $? -eq 0 ]]; then
+        break
+    fi
 
-#    echo ""
-#    echo -e "${CRED}/!\ Erreur: Un problème est survenu lors de la connexion au serveur FTP.${CEND}" 1>&2
-#    echo -e "${CRED}/!\ Erreur: Merci de re-saisir les paramètres de connexion :${CEND}" 1>&2
-#    echo ""
-#    getCredentials
-#    echo ""
-#done
-#echo -e " ${CGREEN}Connexion au serveur FTP [OK]${CEND}"
+    echo ""
+    echo -e "${CRED}/!\ Erreur: Un problème est survenu lors de la connexion au serveur FTP.${CEND}" 1>&2
+    echo -e "${CRED}/!\ Erreur: Merci de re-saisir les paramètres de connexion :${CEND}" 1>&2
+    echo ""
+    getCredentials
+    echo ""
+done
+echo -e " ${CGREEN}Connexion au serveur FTP [OK]${CEND}"
 
 echo ""
 read -rp "> Veuillez saisir votre adresse email : " EMAIL
@@ -142,6 +142,7 @@ HOST_ESCP=$(echo "$HOST" | sed -e 's/[]\/$*.^|[]/\\&/g')
 
 echo ""
 echo -n "Ajout des paramètres de connexion au serveur Rsync"
+
 sed -i -e "s/\(HOST=\).*/\1'$HOST_ESCP'/" \
        -e "s/\(USER=\).*/\1'$USER'/"      \
        -e "s/\(PASSWD=\).*/\1'$PASSWD'/"  \
@@ -179,6 +180,7 @@ cat > /opt/full-backup/.excluded-paths <<EOF
 /var/tmp
 /var/cache
 /var/backup
+/var/lib/docker
 EOF
 
 if [[ "$EXCLUDE" = "o" ]] || [[ "$EXCLUDE" = "O" ]]; then
@@ -209,83 +211,6 @@ fi
 
 smallLoader
 clear
-
-#echo -e "${CCYAN}---------------${CEND}"
-#echo -e "${CCYAN}[  RNG TOOLS  ]${CEND}"
-#echo -e "${CCYAN}---------------${CEND}"
-#echo ""
-
-#echo -e "${CGREEN}-> Configuration de RNG-TOOLS.${CEND}"
-#echo "Device: /dev/urandom"
-#cat > /etc/default/rng-tools <<EOF
-#HRNGDEVICE=/dev/urandom
-#RNGDOPTIONS="-W 80% -t 20"
-#EOF
-
-#echo ""
-#echo -e "${CGREEN}-> Démarrage de RNG-TOOLS.${CEND}"
-#service rng-tools start
-
-#echo ""
-#echo -e "${CCYAN}-------------------------------------${CEND}"
-#echo -e "${CCYAN}[  CREATION D'UNE PAIRE DE CLE GPG  ]${CEND}"
-#echo -e "${CCYAN}-------------------------------------${CEND}"
-#echo ""
-
-#read -rp "Voulez-vous créer une nouvelle paire de clé GPG ? (o/n) : " CREATEKEY
-
-#if [[ "$CREATEKEY" = "o" ]] || [[ "$CREATEKEY" = "O" ]]; then
-
-#    echo -e "${CCYAN}--------------------------------------------------------------------------${CEND}"
-#    gpg --gen-key
-
-#    if [ $? -eq 0 ]; then
-#        echo -e "\n${CGREEN}Vos clés GPG ont été générées avec succès !${CEND}\n"
-#    else
-#        echo -e "\n${CRED}/!\ Erreur: Une erreur est survenue pendant la création de vos clés GPG.${CEND}\n" 1>&2
-#    fi
-#fi
-
-#echo ""
-#echo -e "${CCYAN}Liste de vos clés GPG :${CEND}"
-#echo -e "${CCYAN}------------------------------------------${CEND}"
-#gpg --list-keys --with-fingerprint --keyid-format 0xlong | grep -i "pub\(.*\)0x\(.*\)"
-#echo -e "${CCYAN}------------------------------------------${CEND}"
-#echo ""
-
-#getGPGCredentials() {
-#    read  -rp "> Veuillez saisir l'identifiant de votre clé (0x...) : " KEYID
-#    read -srp "> Veuillez saisir le mot de passe : " KEYPASSWD
-#}
-
-#getGPGCredentials
-
-# On test la clé et la passphrase
-#until echo "AuthTest" | gpg --no-use-agent           \
-#                            -o /dev/null             \
-#                            --local-user "$KEYID"    \
-#                            --yes                    \
- #                           --batch                  \
-#                            --no-tty                 \
-#                            --passphrase "$KEYPASSWD" \
-#                            -as - > /dev/null 2>&1
-#do
-#    echo ""
-#    echo -e "${CRED}/!\ Erreur: Clé inconnue ou mot de passe incorrect.${CEND}" 1>&2
-#    echo -e "${CRED}/!\ Merci de re-saisir les paramètres GPG :${CEND}" 1>&2
-#    echo ""
-#    getGPGCredentials
-#    echo ""
-#done
-
-#echo -e "\n"
-#echo -e "Vérification des paramètres GPG ${CGREEN}[OK]${CEND}"
-#sed -i "s/\(KEYID=\).*/\1'$KEYID'/" backup.sh
-
-#echo -n "Création du fichier .gpg-passwd"
-#echo "$KEYPASSWD" > /opt/full-backup/.gpg-passwd
-#chmod 600 /opt/full-backup/.gpg-passwd
-#echo -e " ${CGREEN}[OK]${CEND}"
 
 # Suppression des fichiers de log
 rm -rf $ERROR_FILE

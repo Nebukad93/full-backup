@@ -19,18 +19,15 @@ PASSWD=''
 PORT=
 # --------------------------------------------------------------------
 
-CDAY=$(date +%d%m%Y-%H%M)
+CDAY=$(date +%Y%m%d-%H%M)
 NB_MAX_BACKUP=
 BACKUP_PARTITION=/home/backup/local
 BACKUP_FOLDER=$BACKUP_PARTITION/backup-$CDAY
 ERROR_FILE=$BACKUP_FOLDER/errors.log
-FTP_FILE=$BACKUP_FOLDER/rsync.log
+FTP_FILE=$BACKUP_FOLDER/ftp.log
 ARCHIVE=$BACKUP_FOLDER/backup-$CDAY.tar.gz
 LOG_FILE=/var/log/backup.log
 FTP_REMOTE_PATH="/"
-
-# Identifiant de la clé GPG
-#KEYID=''
 
 # Définition des variables de couleurs
 CSI="\033["
@@ -46,49 +43,25 @@ CCYAN="${CSI}0;36m"
 uploadToRemoteServer() {
 
 # La commande ftp n'est pas compatible avec SSL/TLS donc on utilise lftp à la place
-#lftp -d -e "cd $FTP_REMOTE_PATH;         \
-#            lcd $BACKUP_FOLDER;          \
-#            put backup-$CDAY.tar.gz;     \
-#            put backup-$CDAY.tar.gz.sig; \
-#            put backup-$CDAY.tar.gz.pub; \
-#            bye" -u $USER,$PASSWD -p $PORT $HOST 2> "$FTP_FILE" > /dev/null
+lftp -d -e "cd $FTP_REMOTE_PATH;         \
+            lcd $BACKUP_FOLDER;          \
+            put backup-$CDAY.tar.gz;     \
+            bye" -u $USER,$PASSWD -p $PORT $HOST 2> "$FTP_FILE" > /dev/null
 
-#FILES_TRANSFERRED=$(grep -ci "226" "$FTP_FILE")
+FILES_TRANSFERRED=$(grep -ci "226" "$FTP_FILE")
 
-# On vérifie que les 3 fichiers ont bien été transférés
-#if [[ $FILES_TRANSFERRED -ge 3 ]]; then
-#    echo "OK"
-#fi
-
-rsync -az --progress backup-$CDAY.tar.gz $USER@$HOST:$FTP_REMOTE_PATH/ 2> "$FTP_FILE" > /dev/null
+# On vérifie que le fichier a bien été transféré
+if [[ $FILES_TRANSFERRED -ge 1 ]]; then
+    echo "OK"
+fi
 
 }
 
-#sendErrorMail() {
+sendErrorMail() {
 
-#SERVER_NAME=$(hostname -s)
+/home/pi/scripts/telegram.sh $2
 
-#echo -e "Subject: ${SERVER_NAME^^} - Echec de la sauvegarde
-#Une erreur est survenue lors de l'execution du script de sauvegarde.
-#$2
-
-#Detail de l'erreur :
-#----------------------------------------------------------
-
-#$(cat "$1")
-
-#----------------------------------------------------------
-
-#INFO Serveur :
-
-#@IP : $(hostname -i)
-#Hostname : $(uname -n)
-#Kernel : $(uname -r)
-#" > /tmp/reporting.txt
-
-#sendmail $REPORTING_EMAIL < /tmp/reporting.txt
-
-#}
+}
 
 ##################################################
 
@@ -126,7 +99,8 @@ if [[ ! -f /opt/full-backup/.excluded-paths ]]; then
 fi
 
 echo -n "> Compression des fichiers système" | tee -a $LOG_FILE
-tar --warning=none -cpPzf "$ARCHIVE" --exclude-from=/opt/full-backup/.excluded-paths / 2> "$ERROR_FILE"
+#tar --warning=none --use-compress-program=pigz -cpPf "$ARCHIVE" --exclude-from=/opt/full-backup/.excluded-paths / 2> "$ERROR_FILE"
+tar --warning=none -cpzPf "$ARCHIVE" --exclude-from=/opt/full-backup/.excluded-paths / 2> "$ERROR_FILE"
 
 # Si une erreur survient lors de la compression
 if [[ -s "$ERROR_FILE" ]]; then
@@ -150,38 +124,6 @@ if [[ "$SIZE" -gt 2147483648 ]]; then
     echo -e "" | tee -a $LOG_FILE
 #    sendErrorMail "Archive trop volumineuse, merci de vérifier le fichier d'exclusion."
 fi
-
-# On vérifie que le fichier .gpg-passwd existe bien
-#if [[ ! -f /opt/full-backup/.gpg-passwd ]]; then
-#    echo -e "\n${CRED}/!\ ERREUR: Le fichier${CEND} ${CPURPLE}/opt/full-backup/.gpg-passwd${CEND} ${CRED}n'existe pas !${CEND}" | tee -a $LOG_FILE
-#    echo -e "" | tee -a $LOG_FILE
-#    exit 1
-#fi
-
-#if [[ "$KEYID" = "" ]]; then
-#    echo -e "\n${CRED}/!\ ERREUR: La variable KEYID n'est pas définie.${CEND}" | tee -a $LOG_FILE
-#    echo -e "" | tee -a $LOG_FILE
-#    exit 1
-#fi
-
-#gpg --export --armor --local-user $KEYID 2>&1 > /dev/null | fgrep -q "WARNING: nothing exported"
-
-# On vérifie que la paire de clé publique / clé privée a bien créée
-#if [[ $? -eq 0 ]]; then
-#    echo -e "\n${CRED}/!\ ERREUR: Aucune clé publique n'a été détectée !${CEND}" | tee -a $LOG_FILE
-#    echo -e "${CRED}/!\ Exécuter la commande suivante pour en créer une :${CEND}" | tee -a $LOG_FILE
-#    echo "-> gpg --gen-key" | tee -a $LOG_FILE
-#    echo "" | tee -a $LOG_FILE
-#    exit 1
-#fi
-
-#echo -n "> Création de la signature de l'archive" | tee -a $LOG_FILE
-# Exportation de la clé publique
-#gpg --export --armor --local-user $KEYID > "$ARCHIVE".pub
-# Création de la signature
-#gpg --yes --batch --no-tty --local-user $KEYID --passphrase-file=/opt/full-backup/.gpg-passwd --detach-sign "$ARCHIVE"
-
-#echo -e " ${CGREEN}[OK]${CEND}" | tee -a $LOG_FILE
 
 NB_ATTEMPT=1
 
@@ -214,23 +156,21 @@ if [[ "$nbBackup" -gt $NB_MAX_BACKUP ]]; then
     # Supprime le répertoire du backup
     rm -rf "$oldestBackupPath"
 
-    # Supprime l'archive, le fichier de signature et la clé publique sur le serveur FTP
-#    lftp -d -e "cd $FTP_REMOTE_PATH;             \
-#                rm $oldestBackupFile.tar.gz;     \
-#                rm $oldestBackupFile.tar.gz.sig; \
-#                rm $oldestBackupFile.tar.gz.pub; \
-#                bye" -u $USER,$PASSWD -p $PORT $HOST 2>> "$FTP_FILE" > /dev/null
+    # Supprime l'archive sur le serveur FTP
+    lftp -d -e "cd $FTP_REMOTE_PATH;             \
+                rm $oldestBackupFile.tar.gz;     \
+                bye" -u $USER,$PASSWD -p $PORT $HOST 2>> "$FTP_FILE" > /dev/null
 
-#    FILES_REMOVED=$(grep -ci "250\(.*\)dele" "$FTP_FILE")
+    FILES_REMOVED=$(grep -ci "250\(.*\)dele" "$FTP_FILE")
 
-    # On vérifie que les 3 fichiers ont bien été supprimés
-#    if [[ "$FILES_REMOVED" -ne 3 ]]; then
-#        MESSAGE="Echec lors de la suppression de la sauvegarde le serveur FTP."
-#        echo -e "\n${CRED}/!\ ERREUR: ${MESSAGE}${CEND}" | tee -a $LOG_FILE
-#        echo "" | tee -a $LOG_FILE
-#        sendErrorMail "$FTP_FILE" "$MESSAGE"
-#        exit 1
-#    fi
+    # On vérifie que le fichier a bien été supprimé
+    if [[ "$FILES_REMOVED" -ne 1 ]]; then
+        MESSAGE="Echec lors de la suppression de la sauvegarde le serveur FTP."
+        echo -e "\n${CRED}/!\ ERREUR: ${MESSAGE}${CEND}" | tee -a $LOG_FILE
+        echo "" | tee -a $LOG_FILE
+        sendErrorMail "$FTP_FILE" "$MESSAGE"
+        exit 1
+    fi
 
     echo -e " ${CGREEN}[OK]${CEND}" | tee -a $LOG_FILE
 fi
