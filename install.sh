@@ -66,7 +66,7 @@ echo ""
 echo -e "${CGREEN}-> Installation de LFTP, GnuPG et rng-tools ${CEND}"
 echo ""
 
-apt-get install -y lftp gnupg rng-tools
+apt-get install -y lftp pigz
 
 if [[ $? -ne 0 ]]; then
     echo ""
@@ -178,6 +178,7 @@ cat > /opt/full-backup/.excluded-paths <<EOF
 /tmp
 /var/cache
 /var/backup
+/var/lib/docker
 EOF
 
 if [[ "$EXCLUDE" = "o" ]] || [[ "$EXCLUDE" = "O" ]]; then
@@ -208,83 +209,6 @@ fi
 
 smallLoader
 clear
-
-echo -e "${CCYAN}---------------${CEND}"
-echo -e "${CCYAN}[  RNG TOOLS  ]${CEND}"
-echo -e "${CCYAN}---------------${CEND}"
-echo ""
-
-echo -e "${CGREEN}-> Configuration de RNG-TOOLS.${CEND}"
-echo "Device: /dev/urandom"
-cat > /etc/default/rng-tools <<EOF
-HRNGDEVICE=/dev/urandom
-RNGDOPTIONS="-W 80% -t 20"
-EOF
-
-echo ""
-echo -e "${CGREEN}-> Démarrage de RNG-TOOLS.${CEND}"
-service rng-tools start
-
-echo ""
-echo -e "${CCYAN}-------------------------------------${CEND}"
-echo -e "${CCYAN}[  CREATION D'UNE PAIRE DE CLE GPG  ]${CEND}"
-echo -e "${CCYAN}-------------------------------------${CEND}"
-echo ""
-
-read -rp "Voulez-vous créer une nouvelle paire de clé GPG ? (o/n) : " CREATEKEY
-
-if [[ "$CREATEKEY" = "o" ]] || [[ "$CREATEKEY" = "O" ]]; then
-
-    echo -e "${CCYAN}--------------------------------------------------------------------------${CEND}"
-    gpg --gen-key
-
-    if [ $? -eq 0 ]; then
-        echo -e "\n${CGREEN}Vos clés GPG ont été générées avec succès !${CEND}\n"
-    else
-        echo -e "\n${CRED}/!\ Erreur: Une erreur est survenue pendant la création de vos clés GPG.${CEND}\n" 1>&2
-    fi
-fi
-
-echo ""
-echo -e "${CCYAN}Liste de vos clés GPG :${CEND}"
-echo -e "${CCYAN}------------------------------------------${CEND}"
-gpg --list-keys --with-fingerprint --keyid-format 0xlong | grep -i "pub\(.*\)0x\(.*\)"
-echo -e "${CCYAN}------------------------------------------${CEND}"
-echo ""
-
-getGPGCredentials() {
-    read  -rp "> Veuillez saisir l'identifiant de votre clé (0x...) : " KEYID
-    read -srp "> Veuillez saisir le mot de passe : " KEYPASSWD
-}
-
-getGPGCredentials
-
-# On test la clé et la passphrase
-until echo "AuthTest" | gpg --no-use-agent           \
-                            -o /dev/null             \
-                            --local-user "$KEYID"    \
-                            --yes                    \
-                            --batch                  \
-                            --no-tty                 \
-                            --passphrase "$KEYPASSWD" \
-                            -as - > /dev/null 2>&1
-do
-    echo ""
-    echo -e "${CRED}/!\ Erreur: Clé inconnue ou mot de passe incorrect.${CEND}" 1>&2
-    echo -e "${CRED}/!\ Merci de re-saisir les paramètres GPG :${CEND}" 1>&2
-    echo ""
-    getGPGCredentials
-    echo ""
-done
-
-echo -e "\n"
-echo -e "Vérification des paramètres GPG ${CGREEN}[OK]${CEND}"
-sed -i "s/\(KEYID=\).*/\1'$KEYID'/" backup.sh
-
-echo -n "Création du fichier .gpg-passwd"
-echo "$KEYPASSWD" > /opt/full-backup/.gpg-passwd
-chmod 600 /opt/full-backup/.gpg-passwd
-echo -e " ${CGREEN}[OK]${CEND}"
 
 # Suppression des fichiers de log
 rm -rf $ERROR_FILE

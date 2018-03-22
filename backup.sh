@@ -29,9 +29,6 @@ ARCHIVE=$BACKUP_FOLDER/backup-$CDAY.tar.gz
 LOG_FILE=/var/log/backup.log
 FTP_REMOTE_PATH="/"
 
-# Identifiant de la clé GPG
-KEYID=''
-
 # Définition des variables de couleurs
 CSI="\033["
 CEND="${CSI}0m"
@@ -49,14 +46,12 @@ uploadToRemoteServer() {
 lftp -d -e "cd $FTP_REMOTE_PATH;         \
             lcd $BACKUP_FOLDER;          \
             put backup-$CDAY.tar.gz;     \
-            put backup-$CDAY.tar.gz.sig; \
-            put backup-$CDAY.tar.gz.pub; \
             bye" -u $USER,$PASSWD -p $PORT $HOST 2> "$FTP_FILE" > /dev/null
 
 FILES_TRANSFERRED=$(grep -ci "226" "$FTP_FILE")
 
 # On vérifie que les 3 fichiers ont bien été transférés
-if [[ $FILES_TRANSFERRED -ge 3 ]]; then
+if [[ $FILES_TRANSFERRED -ge 1 ]]; then
     echo "OK"
 fi
 
@@ -149,38 +144,6 @@ if [[ "$SIZE" -gt 2147483648 ]]; then
     sendErrorMail "Archive trop volumineuse, merci de vérifier le fichier d'exclusion."
 fi
 
-# On vérifie que le fichier .gpg-passwd existe bien
-if [[ ! -f /opt/full-backup/.gpg-passwd ]]; then
-    echo -e "\n${CRED}/!\ ERREUR: Le fichier${CEND} ${CPURPLE}/opt/full-backup/.gpg-passwd${CEND} ${CRED}n'existe pas !${CEND}" | tee -a $LOG_FILE
-    echo -e "" | tee -a $LOG_FILE
-    exit 1
-fi
-
-if [[ "$KEYID" = "" ]]; then
-    echo -e "\n${CRED}/!\ ERREUR: La variable KEYID n'est pas définie.${CEND}" | tee -a $LOG_FILE
-    echo -e "" | tee -a $LOG_FILE
-    exit 1
-fi
-
-gpg --export --armor --local-user $KEYID 2>&1 > /dev/null | fgrep -q "WARNING: nothing exported"
-
-# On vérifie que la paire de clé publique / clé privée a bien créée
-if [[ $? -eq 0 ]]; then
-    echo -e "\n${CRED}/!\ ERREUR: Aucune clé publique n'a été détectée !${CEND}" | tee -a $LOG_FILE
-    echo -e "${CRED}/!\ Exécuter la commande suivante pour en créer une :${CEND}" | tee -a $LOG_FILE
-    echo "-> gpg --gen-key" | tee -a $LOG_FILE
-    echo "" | tee -a $LOG_FILE
-    exit 1
-fi
-
-echo -n "> Création de la signature de l'archive" | tee -a $LOG_FILE
-# Exportation de la clé publique
-gpg --export --armor --local-user $KEYID > "$ARCHIVE".pub
-# Création de la signature
-gpg --yes --batch --no-tty --local-user $KEYID --passphrase-file=/opt/full-backup/.gpg-passwd --detach-sign "$ARCHIVE"
-
-echo -e " ${CGREEN}[OK]${CEND}" | tee -a $LOG_FILE
-
 NB_ATTEMPT=1
 
 echo -n "> Transfert de l'archive vers le serveur distant" | tee -a $LOG_FILE
@@ -215,14 +178,12 @@ if [[ "$nbBackup" -gt $NB_MAX_BACKUP ]]; then
     # Supprime l'archive, le fichier de signature et la clé publique sur le serveur FTP
     lftp -d -e "cd $FTP_REMOTE_PATH;             \
                 rm $oldestBackupFile.tar.gz;     \
-                rm $oldestBackupFile.tar.gz.sig; \
-                rm $oldestBackupFile.tar.gz.pub; \
                 bye" -u $USER,$PASSWD -p $PORT $HOST 2>> "$FTP_FILE" > /dev/null
 
     FILES_REMOVED=$(grep -ci "250\(.*\)dele" "$FTP_FILE")
 
-    # On vérifie que les 3 fichiers ont bien été supprimés
-    if [[ "$FILES_REMOVED" -ne 3 ]]; then
+    # On vérifie que le fichier a bien été supprimé
+    if [[ "$FILES_REMOVED" -ne 1 ]]; then
         MESSAGE="Echec lors de la suppression de la sauvegarde le serveur FTP."
         echo -e "\n${CRED}/!\ ERREUR: ${MESSAGE}${CEND}" | tee -a $LOG_FILE
         echo "" | tee -a $LOG_FILE

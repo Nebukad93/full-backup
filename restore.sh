@@ -67,66 +67,16 @@ downloadFromRemoteServer() {
 
     lftp -d -e "cd $FTP_REMOTE_PATH; \
                 get $archive;        \
-                get $archive.sig;    \
-                get $archive.pub;    \
                 bye" -u $USER,$PASSWD -p $PORT $HOST 2> $FTP_FILE > /dev/null
 
     FILES_TRANSFERRED=$(grep -ci "226\(-.*\)file successfully transferred" "$FTP_FILE")
 
-    # On vérifie que les 3 fichiers ont bien été transférés
-    if [[ $FILES_TRANSFERRED -ne 3 ]]; then
+    # On vérifie que le fichier a bien été transféré
+    if [[ $FILES_TRANSFERRED -ne 1 ]]; then
         echo -e "\n${CRED}/!\ ERREUR: Echec lors de la récupération de l'archive sur le serveur FTP${CEND}"
         echo ""
         exit 1
     fi
-
-}
-
-verifySignature() {
-
-    local file=$1 out=
-
-    FINGERPRINT=$(gpg --list-keys --fingerprint --with-colons | awk -F: '$1 == "fpr" {print $10;}' | head -n 1)
-
-    # On vérifie l'intégrité du backup avec la clé de signature
-    if out=$(gpg --status-fd 1 --verify "$file" 2> /dev/null) &&
-    echo "$out" | grep -qs "^\[GNUPG:\] VALIDSIG $FINGERPRINT"; then
-        echo "OK"
-    fi
-
-}
-
-checkIntegrity() {
-
-    # Importation de la clé publique
-    echo ""
-    echo -e "${CCYAN}-------------------------- CONFIGURATION DE GPG --------------------------${CEND}"
-
-    gpg --import --batch --no-tty $ARCHIVE.pub
-
-    echo -e "${CCYAN}--------------------------------------------------------------------------${CEND}"
-    echo ""
-
-    NB_ATTEMPT=1
-
-    echo "> Vérification de l'intégrité"
-    while [[ -z $(verifySignature $ARCHIVE.sig) ]]; do
-        if [[ "$NB_ATTEMPT" -lt 4 ]]; then
-            echo -e "${CRED}/!\ ERREUR: Echec de la vérification de l'intégrité... Tentative $NB_ATTEMPT${CEND}"
-            rm -rf $ARCHIVE $ARCHIVE.sig $ARCHIVE.pub
-            downloadFromRemoteServer $ARCHIVE
-
-            if [[ -n $(verifySignature $ARCHIVE.sig) ]]; then
-                break
-            fi
-
-            let "NB_ATTEMPT += 1"
-            sleep 10
-        else
-            echo -e "${CRED}/!\ ERREUR: Echec lors de la vérification de l'intégrité de l'archive, signature incorrecte.${CEND}"
-            exit 1
-        fi
-    done
 
 }
 
@@ -183,8 +133,6 @@ remoteRestoration() {
     echo "> Récupération de l'archive depuis le serveur FTP"
     downloadFromRemoteServer "$ARCHIVE"
 
-    checkIntegrity
-
 }
 
 localRestoration() {
@@ -199,8 +147,6 @@ localRestoration() {
 
     echo "> Récupération de l'archive locale"
     cp /var/backup/local/"$ARCHIVEPATH"/*.tar.gz* .
-
-    checkIntegrity
 
 }
 
@@ -277,8 +223,6 @@ echo ""
 echo -e "${CGREEN}> Restauration effectuée !${CEND}"
 
 rm -rf "$ARCHIVE"
-rm -rf "$ARCHIVE".pub
-rm -rf "$ARCHIVE".sig
 rm -rf $ERROR_FILE
 rm -rf $FTP_FILE
 
